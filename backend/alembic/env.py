@@ -10,10 +10,14 @@ from alembic import context
 # Import models so they register with Base
 from app.database import Base
 from app.models import user  # noqa
+from app.config import settings
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Override alembic.ini URL with the real DB URL from environment
+config.set_main_option("sqlalchemy.url", settings.async_database_url)
 
 target_metadata = Base.metadata
 
