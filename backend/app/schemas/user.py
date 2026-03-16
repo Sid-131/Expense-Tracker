@@ -1,0 +1,15 @@
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class UserResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    email: str | None
+    phone: str | None
+    profile_pic: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
