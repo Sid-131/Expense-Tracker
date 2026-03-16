@@ -34,7 +34,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "BASE_URL", "\"https://your-server.com/\"")
+            buildConfigField("String", "BASE_URL", "\"https://api.sidmatrix.xyz/\"")
         }
     }
 
