@@ -2,7 +2,7 @@ import uuid
 from datetime import date, timezone, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.expense import Balance, Expense, ExpenseSplit
@@ -24,7 +24,7 @@ async def get_analytics(
         )
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
         .where(ExpenseSplit.user_id == user_id)
-        .group_by(Expense.category, func.to_char(Expense.created_at, "YYYY-MM"))
+        .group_by(Expense.category, text("to_char(expenses.created_at, 'YYYY-MM')"))
     )
     rows = (await db.execute(split_q)).all()
 
