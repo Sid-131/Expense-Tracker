@@ -2,7 +2,7 @@ import uuid
 from datetime import date, timezone, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.expense import Balance, Expense, ExpenseSplit
@@ -15,16 +15,17 @@ async def get_analytics(
 ) -> AnalyticsResponse:
     # ── 1. Expenses where this user paid (their personal spend) ─────────────
     # We count what the user owes (their share in splits) across all groups
+    month_expr = literal_column("to_char(expenses.created_at, 'YYYY-MM')")
     split_q = (
         select(
             Expense.category,
             func.sum(ExpenseSplit.amount).label("total"),
             func.count(ExpenseSplit.id).label("cnt"),
-            func.to_char(Expense.created_at, "YYYY-MM").label("month"),
+            month_expr.label("month"),
         )
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
         .where(ExpenseSplit.user_id == user_id)
-        .group_by(Expense.category, text("to_char(expenses.created_at, 'YYYY-MM')"))
+        .group_by(Expense.category, month_expr)
     )
     rows = (await db.execute(split_q)).all()
 
