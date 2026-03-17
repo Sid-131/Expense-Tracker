@@ -21,6 +21,7 @@ retrofit = "2.11.0"
 okhttp = "4.12.0"
 gson = "2.10.1"
 securityCrypto = "1.1.0-alpha06"
+workManager = "2.9.1"
 
 [libraries]
 # AndroidX Core
@@ -70,6 +71,11 @@ gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 # Security
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+
+# WorkManager + HiltWork
+work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltNavigationCompose" }
+hilt-compiler-androidx = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltNavigationCompose" }
 
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }

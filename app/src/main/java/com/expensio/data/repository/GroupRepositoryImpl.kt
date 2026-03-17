@@ -1,5 +1,7 @@
 package com.expensio.data.repository
 
+import com.expensio.data.local.dao.GroupDao
+import com.expensio.data.local.entity.GroupEntity
 import com.expensio.data.remote.api.GroupApi
 import com.expensio.data.remote.dto.AddMemberRequest
 import com.expensio.data.remote.dto.GroupCreateRequest
@@ -12,15 +14,27 @@ import javax.inject.Inject
 
 class GroupRepositoryImpl @Inject constructor(
     private val api: GroupApi,
+    private val groupDao: GroupDao,
 ) : GroupRepository {
 
     override suspend fun createGroup(name: String): Result<Group> = runCatching {
         val dto = api.createGroup(GroupCreateRequest(name))
-        Group(dto.id, dto.name, dto.createdBy, dto.createdAt, dto.memberCount)
+        val group = Group(dto.id, dto.name, dto.createdBy, dto.createdAt, dto.memberCount)
+        groupDao.upsertAll(listOf(group.toEntity()))
+        group
     }
 
-    override suspend fun getGroups(): Result<List<Group>> = runCatching {
-        api.getGroups().map { Group(it.id, it.name, it.createdBy, it.createdAt, it.memberCount) }
+    override suspend fun getGroups(): Result<List<Group>> {
+        return try {
+            val dtos = api.getGroups()
+            val groups = dtos.map { Group(it.id, it.name, it.createdBy, it.createdAt, it.memberCount) }
+            groupDao.upsertAll(groups.map { it.toEntity() })
+            Result.success(groups)
+        } catch (e: Exception) {
+            val cached = groupDao.getAll()
+            if (cached.isNotEmpty()) Result.success(cached.map { it.toDomain() })
+            else Result.failure(e)
+        }
     }
 
     override suspend fun getGroupDetail(id: String): Result<GroupDetail> = runCatching {
@@ -49,12 +63,12 @@ class GroupRepositoryImpl @Inject constructor(
         }
 
     override suspend fun removeMember(groupId: String, memberId: String): Result<Unit> =
-        runCatching {
-            api.removeMember(groupId, memberId)
-            Unit
-        }
+        runCatching { api.removeMember(groupId, memberId); Unit }
 
     override suspend fun searchUsers(query: String): Result<List<UserSearchResult>> = runCatching {
         api.searchUsers(query).map { UserSearchResult(it.id, it.name, it.email, it.profilePic) }
     }
+
+    private fun Group.toEntity() = GroupEntity(id, name, createdBy, createdAt, memberCount)
+    private fun GroupEntity.toDomain() = Group(id, name, createdBy, createdAt, memberCount)
 }

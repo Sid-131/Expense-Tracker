@@ -8,6 +8,7 @@ import com.expensio.domain.model.ExpenseDetail
 import com.expensio.domain.model.GroupMember
 import com.expensio.domain.repository.ExpenseRepository
 import com.expensio.domain.repository.GroupRepository
+import com.expensio.utils.OfflineQueuedException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -91,7 +92,14 @@ class ExpenseViewModel @Inject constructor(
                 groupId, title, amount, category, paidByUserId, paidByGuestId, splitType, splits
             )
                 .onSuccess { loadExpenses(groupId); onSuccess() }
-                .onFailure { _error.value = it.message }
+                .onFailure { e ->
+                    if (e is OfflineQueuedException) {
+                        _error.value = e.message // "Saved offline — will sync when connected"
+                        onSuccess() // navigate back as if it succeeded
+                    } else {
+                        _error.value = e.message
+                    }
+                }
             _isLoading.value = false
         }
     }

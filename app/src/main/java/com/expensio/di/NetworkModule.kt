@@ -75,4 +75,8 @@ object NetworkModule {
     @Singleton
     fun provideSettlementApi(retrofit: Retrofit): com.expensio.data.remote.api.SettlementApi =
         retrofit.create(com.expensio.data.remote.api.SettlementApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGson(): com.google.gson.Gson = com.google.gson.Gson()
 }

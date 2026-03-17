@@ -23,6 +23,7 @@ import androidx.navigation.navArgument
 import com.expensio.ui.auth.AuthViewModel
 import com.expensio.ui.auth.LoginScreen
 import com.expensio.ui.auth.SignupScreen
+import com.expensio.ui.common.OfflineBanner
 import com.expensio.ui.expenses.AddExpenseScreen
 import com.expensio.ui.expenses.ExpenseDetailScreen
 import com.expensio.ui.groups.AddMemberScreen
@@ -140,11 +141,12 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = mainNavController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
+        androidx.compose.foundation.layout.Column(modifier = Modifier.padding(innerPadding)) {
+            OfflineBanner()
+            NavHost(
+                navController = mainNavController,
+                startDestination = Screen.Home.route,
+            ) {
             composable(Screen.Home.route) {
                 HomeScreen(authViewModel = authViewModel)
             }
@@ -164,6 +166,7 @@ fun MainScreen(
                     }
                 )
             }
+        }
         }
     }
 }

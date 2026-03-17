@@ -98,6 +98,11 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
 
+    // WorkManager + HiltWork
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.compiler.androidx)
+
     // Security (EncryptedSharedPreferences for JWT storage)
     implementation(libs.security.crypto)
 

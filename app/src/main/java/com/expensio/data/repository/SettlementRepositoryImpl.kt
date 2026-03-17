@@ -1,5 +1,7 @@
 package com.expensio.data.repository
 
+import com.expensio.data.local.dao.SettlementDao
+import com.expensio.data.local.entity.SettlementEntity
 import com.expensio.data.remote.api.SettlementApi
 import com.expensio.data.remote.dto.SettlementCreateRequest
 import com.expensio.domain.model.Settlement
@@ -9,6 +11,7 @@ import javax.inject.Inject
 
 class SettlementRepositoryImpl @Inject constructor(
     private val api: SettlementApi,
+    private val settlementDao: SettlementDao,
 ) : SettlementRepository {
 
     override suspend fun getSuggestions(groupId: String): List<SettlementSuggestion> =
@@ -40,26 +43,43 @@ class SettlementRepositoryImpl @Inject constructor(
             toGuestId = toGuestId,
             amount = amount,
         )
-    ).toDomain()
+    ).toDomain().also { s ->
+        settlementDao.upsertAll(listOf(s.toEntity()))
+    }
 
-    override suspend fun getGroupSettlements(groupId: String): List<Settlement> =
-        api.getGroupSettlements(groupId).map { it.toDomain() }
+    override suspend fun getGroupSettlements(groupId: String): List<Settlement> {
+        return try {
+            val list = api.getGroupSettlements(groupId).map { it.toDomain() }
+            settlementDao.upsertAll(list.map { it.toEntity() })
+            list
+        } catch (e: Exception) {
+            settlementDao.getByGroup(groupId).map { it.toDomain() }
+        }
+    }
 
     override suspend fun completeSettlement(settlementId: String): Settlement =
-        api.completeSettlement(settlementId).toDomain()
+        api.completeSettlement(settlementId).toDomain().also { s ->
+            settlementDao.upsertAll(listOf(s.toEntity()))
+        }
 
     private fun com.expensio.data.remote.dto.SettlementResponseDto.toDomain() = Settlement(
-        id = id,
-        groupId = groupId,
-        fromUserId = fromUserId,
-        fromGuestId = fromGuestId,
-        fromName = fromName,
-        toUserId = toUserId,
-        toGuestId = toGuestId,
-        toName = toName,
-        amount = amount,
-        status = status,
-        createdAt = createdAt,
-        completedAt = completedAt,
+        id = id, groupId = groupId,
+        fromUserId = fromUserId, fromGuestId = fromGuestId, fromName = fromName,
+        toUserId = toUserId, toGuestId = toGuestId, toName = toName,
+        amount = amount, status = status, createdAt = createdAt, completedAt = completedAt,
+    )
+
+    private fun Settlement.toEntity() = SettlementEntity(
+        id = id, groupId = groupId,
+        fromUserId = fromUserId, fromGuestId = fromGuestId, fromName = fromName,
+        toUserId = toUserId, toGuestId = toGuestId, toName = toName,
+        amount = amount, status = status, createdAt = createdAt, completedAt = completedAt,
+    )
+
+    private fun SettlementEntity.toDomain() = Settlement(
+        id = id, groupId = groupId,
+        fromUserId = fromUserId, fromGuestId = fromGuestId, fromName = fromName,
+        toUserId = toUserId, toGuestId = toGuestId, toName = toName,
+        amount = amount, status = status, createdAt = createdAt, completedAt = completedAt,
     )
 }
