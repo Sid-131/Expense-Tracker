@@ -29,10 +29,12 @@ import com.expensio.ui.expenses.ExpenseDetailScreen
 import com.expensio.ui.groups.AddMemberScreen
 import com.expensio.ui.groups.CreateGroupScreen
 import com.expensio.ui.groups.GroupDetailScreen
+import com.expensio.ui.groups.GroupViewModel
 import com.expensio.ui.groups.GroupsScreen
 import com.expensio.ui.home.HomeScreen
 import com.expensio.ui.personal.PersonalScreen
 import com.expensio.ui.profile.ProfileScreen
+import com.expensio.ui.recurring.CreateRecurringExpenseScreen
 
 @Composable
 fun AppNavGraph(
@@ -100,6 +102,22 @@ fun AppNavGraph(
             val expenseId = backStackEntry.arguments?.getString("expenseId") ?: return@composable
             val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
             ExpenseDetailScreen(expenseId = expenseId, groupId = groupId, navController = rootNavController)
+        }
+        composable(
+            route = Screen.CreateRecurring.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            val groupViewModel: GroupViewModel = hiltViewModel()
+            val detail by groupViewModel.groupDetail.collectAsState()
+            androidx.compose.runtime.LaunchedEffect(groupId) {
+                if (detail == null) groupViewModel.loadGroupDetail(groupId)
+            }
+            CreateRecurringExpenseScreen(
+                groupId = groupId,
+                members = detail?.members ?: emptyList(),
+                navController = rootNavController,
+            )
         }
     }
 }

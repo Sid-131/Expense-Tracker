@@ -3,10 +3,12 @@ package com.expensio.di
 import com.expensio.data.repository.AuthRepositoryImpl
 import com.expensio.data.repository.ExpenseRepositoryImpl
 import com.expensio.data.repository.GroupRepositoryImpl
+import com.expensio.data.repository.RecurringExpenseRepositoryImpl
 import com.expensio.data.repository.SettlementRepositoryImpl
 import com.expensio.domain.repository.AuthRepository
 import com.expensio.domain.repository.ExpenseRepository
 import com.expensio.domain.repository.GroupRepository
+import com.expensio.domain.repository.RecurringExpenseRepository
 import com.expensio.domain.repository.SettlementRepository
 import dagger.Binds
 import dagger.Module
@@ -41,4 +43,10 @@ abstract class RepositoryModule {
     abstract fun bindSettlementRepository(
         settlementRepositoryImpl: SettlementRepositoryImpl
     ): SettlementRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRecurringExpenseRepository(
+        recurringExpenseRepositoryImpl: RecurringExpenseRepositoryImpl
+    ): RecurringExpenseRepository
 }

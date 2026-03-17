@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,8 +46,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.expensio.ui.expenses.ExpenseViewModel
 import com.expensio.ui.navigation.Screen
+import com.expensio.ui.recurring.RecurringExpenseViewModel
 import com.expensio.ui.settlements.SettlementViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +62,7 @@ fun GroupDetailScreen(
     groupViewModel: GroupViewModel = hiltViewModel(),
     expenseViewModel: ExpenseViewModel = hiltViewModel(),
     settlementViewModel: SettlementViewModel = hiltViewModel(),
+    recurringViewModel: RecurringExpenseViewModel = hiltViewModel(),
 ) {
     val detail by groupViewModel.groupDetail.collectAsState()
     val expenses by expenseViewModel.expenses.collectAsState()
@@ -72,6 +78,12 @@ fun GroupDetailScreen(
     val settlementError by settlementViewModel.error.collectAsState()
     val settlementSuccess by settlementViewModel.actionSuccess.collectAsState()
 
+    val recurringList by recurringViewModel.recurring.collectAsState()
+    val isLoadingRecurring by recurringViewModel.isLoading.collectAsState()
+    val recurringError by recurringViewModel.error.collectAsState()
+    val recurringSuccess by recurringViewModel.actionSuccess.collectAsState()
+    var deleteConfirmId by remember { mutableStateOf<String?>(null) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -80,6 +92,7 @@ fun GroupDetailScreen(
         expenseViewModel.loadExpenses(groupId)
         expenseViewModel.loadBalances(groupId)
         settlementViewModel.loadSettlements(groupId)
+        recurringViewModel.load(groupId)
     }
     LaunchedEffect(error) {
         error?.let { snackbarHostState.showSnackbar(it); groupViewModel.clearError() }
@@ -92,6 +105,12 @@ fun GroupDetailScreen(
     }
     LaunchedEffect(settlementSuccess) {
         settlementSuccess?.let { snackbarHostState.showSnackbar(it); settlementViewModel.clearActionSuccess() }
+    }
+    LaunchedEffect(recurringError) {
+        recurringError?.let { snackbarHostState.showSnackbar(it); recurringViewModel.clearError() }
+    }
+    LaunchedEffect(recurringSuccess) {
+        recurringSuccess?.let { snackbarHostState.showSnackbar(it); recurringViewModel.clearActionSuccess() }
     }
     DisposableEffect(Unit) { onDispose { groupViewModel.clearGroupDetail() } }
 
@@ -114,6 +133,9 @@ fun GroupDetailScreen(
                 1 -> FloatingActionButton(onClick = {
                     navController.navigate(Screen.AddMember.createRoute(groupId))
                 }) { Icon(Icons.Default.Add, contentDescription = "Add member") }
+                3 -> FloatingActionButton(onClick = {
+                    navController.navigate(Screen.CreateRecurring.createRoute(groupId))
+                }) { Icon(Icons.Default.Add, contentDescription = "Add recurring") }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -126,6 +148,8 @@ fun GroupDetailScreen(
                     text = { Text("Members") })
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 },
                     text = { Text("Balances") })
+                Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 },
+                    text = { Text("Recurring") })
             }
 
             when (selectedTab) {
@@ -410,7 +434,81 @@ fun GroupDetailScreen(
                         }
                     }
                 }
+
+                3 -> {
+                    if (isLoadingRecurring && recurringList.isEmpty()) {
+                        Box(Modifier.fillMaxSize()) {
+                            CircularProgressIndicator(Modifier.align(Alignment.Center))
+                        }
+                    } else if (recurringList.isEmpty()) {
+                        Box(Modifier.fillMaxSize()) {
+                            Column(Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Autorenew, contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("No recurring expenses",
+                                    style = MaterialTheme.typography.bodyLarge)
+                                Text("Tap + to add one",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    } else {
+                        LazyColumn(Modifier.fillMaxSize()) {
+                            items(recurringList) { r ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(r.title,
+                                                style = MaterialTheme.typography.titleMedium)
+                                            Text("₹%.2f · ${r.frequency.lowercase().replaceFirstChar { it.uppercase() }}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary)
+                                            Text("Paid by ${r.paidByName}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text("Next: ${r.nextDueDate}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.tertiary)
+                                        }
+                                        OutlinedButton(onClick = { deleteConfirmId = r.id }) {
+                                            Text("Remove")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    // Delete confirmation dialog
+    deleteConfirmId?.let { rid ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmId = null },
+            title = { Text("Remove recurring expense?") },
+            text = { Text("This will stop future automatic expenses. Existing expenses are kept.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    recurringViewModel.deactivate(groupId, rid)
+                    deleteConfirmId = null
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmId = null }) { Text("Cancel") }
+            },
+        )
     }
 }

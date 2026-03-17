@@ -14,7 +14,8 @@ from app.schemas.group import (
 )
 from app.schemas.expense import ExpenseCreate, ExpenseResponse, BalanceResponse
 from app.schemas.settlement import SettlementCreate, SettlementResponse, SettlementSuggestion
-from app.services import group_service, expense_service, settlement_service
+from app.schemas.recurring_expense import RecurringExpenseCreate, RecurringExpenseResponse
+from app.services import group_service, expense_service, settlement_service, recurring_expense_service
 
 router = APIRouter()
 
@@ -121,3 +122,32 @@ async def list_settlements(
     db: AsyncSession = Depends(get_db),
 ):
     return await settlement_service.get_group_settlements(db, current_user.id, group_id)
+
+
+@router.post("/{group_id}/recurring", response_model=RecurringExpenseResponse, status_code=201)
+async def create_recurring_expense(
+    group_id: uuid.UUID,
+    data: RecurringExpenseCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await recurring_expense_service.create_recurring(db, current_user.id, group_id, data)
+
+
+@router.get("/{group_id}/recurring", response_model=list[RecurringExpenseResponse])
+async def list_recurring_expenses(
+    group_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await recurring_expense_service.list_recurring(db, current_user.id, group_id)
+
+
+@router.delete("/{group_id}/recurring/{recurring_id}", status_code=204)
+async def deactivate_recurring_expense(
+    group_id: uuid.UUID,
+    recurring_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await recurring_expense_service.deactivate_recurring(db, current_user.id, recurring_id)

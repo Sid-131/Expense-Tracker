@@ -79,4 +79,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideGson(): com.google.gson.Gson = com.google.gson.Gson()
+
+    @Provides
+    @Singleton
+    fun provideRecurringExpenseApi(retrofit: Retrofit): com.expensio.data.remote.api.RecurringExpenseApi =
+        retrofit.create(com.expensio.data.remote.api.RecurringExpenseApi::class.java)
 }

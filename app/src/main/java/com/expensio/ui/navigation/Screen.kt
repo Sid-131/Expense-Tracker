@@ -29,4 +29,9 @@ sealed class Screen(val route: String) {
     object ExpenseDetail : Screen("expense_detail/{expenseId}/{groupId}") {
         fun createRoute(expenseId: String, groupId: String) = "expense_detail/$expenseId/$groupId"
     }
+
+    // Recurring
+    object CreateRecurring : Screen("create_recurring/{groupId}") {
+        fun createRoute(groupId: String) = "create_recurring/$groupId"
+    }
 }
