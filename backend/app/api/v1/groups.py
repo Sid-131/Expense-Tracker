@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db
@@ -12,7 +12,8 @@ from app.schemas.group import (
     GroupResponse,
     MemberResponse,
 )
-from app.services import group_service
+from app.schemas.expense import ExpenseCreate, ExpenseResponse, BalanceResponse
+from app.services import group_service, expense_service
 
 router = APIRouter()
 
@@ -61,3 +62,33 @@ async def remove_member(
     db: AsyncSession = Depends(get_db),
 ):
     await group_service.remove_member(db, current_user.id, group_id, member_id)
+
+
+@router.post("/{group_id}/expenses", response_model=ExpenseResponse, status_code=201)
+async def create_expense(
+    group_id: uuid.UUID,
+    data: ExpenseCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await expense_service.create_expense(db, current_user.id, group_id, data)
+
+
+@router.get("/{group_id}/expenses", response_model=list[ExpenseResponse])
+async def list_expenses(
+    group_id: uuid.UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await expense_service.get_group_expenses(db, current_user.id, group_id, skip, limit)
+
+
+@router.get("/{group_id}/balances", response_model=list[BalanceResponse])
+async def get_balances(
+    group_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await expense_service.get_group_balances(db, current_user.id, group_id)

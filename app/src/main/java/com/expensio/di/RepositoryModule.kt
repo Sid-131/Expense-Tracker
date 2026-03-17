@@ -1,8 +1,10 @@
 package com.expensio.di
 
 import com.expensio.data.repository.AuthRepositoryImpl
+import com.expensio.data.repository.ExpenseRepositoryImpl
 import com.expensio.data.repository.GroupRepositoryImpl
 import com.expensio.domain.repository.AuthRepository
+import com.expensio.domain.repository.ExpenseRepository
 import com.expensio.domain.repository.GroupRepository
 import dagger.Binds
 import dagger.Module
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindGroupRepository(
         groupRepositoryImpl: GroupRepositoryImpl
     ): GroupRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExpenseRepository(
+        expenseRepositoryImpl: ExpenseRepositoryImpl
+    ): ExpenseRepository
 }

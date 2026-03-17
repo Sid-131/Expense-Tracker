@@ -23,6 +23,8 @@ import androidx.navigation.navArgument
 import com.expensio.ui.auth.AuthViewModel
 import com.expensio.ui.auth.LoginScreen
 import com.expensio.ui.auth.SignupScreen
+import com.expensio.ui.expenses.AddExpenseScreen
+import com.expensio.ui.expenses.ExpenseDetailScreen
 import com.expensio.ui.groups.AddMemberScreen
 import com.expensio.ui.groups.CreateGroupScreen
 import com.expensio.ui.groups.GroupDetailScreen
@@ -79,6 +81,24 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
             AddMemberScreen(groupId = groupId, navController = rootNavController)
+        }
+        composable(
+            route = Screen.AddExpense.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            AddExpenseScreen(groupId = groupId, navController = rootNavController)
+        }
+        composable(
+            route = Screen.ExpenseDetail.route,
+            arguments = listOf(
+                navArgument("expenseId") { type = NavType.StringType },
+                navArgument("groupId") { type = NavType.StringType },
+            )
+        ) { backStackEntry ->
+            val expenseId = backStackEntry.arguments?.getString("expenseId") ?: return@composable
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            ExpenseDetailScreen(expenseId = expenseId, groupId = groupId, navController = rootNavController)
         }
     }
 }
