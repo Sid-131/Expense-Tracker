@@ -4,6 +4,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: expensio
       POSTGRES_USER: expensio
@@ -20,6 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     networks:
       - internal
     healthcheck:
@@ -32,6 +34,7 @@ services:
     build:
       context: ./backend
       dockerfile: docker/Dockerfile
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://expensio:${DB_PASSWORD}@postgres/expensio
       REDIS_URL: redis://redis:6379
@@ -50,6 +53,7 @@ services:
 
   nginx:
     image: nginx:alpine
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:

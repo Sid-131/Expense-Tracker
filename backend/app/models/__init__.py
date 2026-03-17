@@ -1,3 +1,4 @@
-from app.models.user import User  # noqa — registers model with Base for Alembic
+from app.models.user import User  # noqa
+from app.models.group import Group, GroupMember, Guest  # noqa
 
-__all__ = ["User"]
+__all__ = ["User", "Group", "GroupMember", "Guest"]

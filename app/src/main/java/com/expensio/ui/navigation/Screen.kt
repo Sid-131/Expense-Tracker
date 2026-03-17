@@ -12,4 +12,13 @@ sealed class Screen(val route: String) {
     object Groups : Screen("groups")
     object Personal : Screen("personal")
     object Profile : Screen("profile")
+
+    // Group screens
+    object CreateGroup : Screen("create_group")
+    object GroupDetail : Screen("group_detail/{groupId}") {
+        fun createRoute(groupId: String) = "group_detail/$groupId"
+    }
+    object AddMember : Screen("add_member/{groupId}") {
+        fun createRoute(groupId: String) = "add_member/$groupId"
+    }
 }

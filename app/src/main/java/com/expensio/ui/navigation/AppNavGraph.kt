@@ -13,14 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.expensio.ui.auth.AuthViewModel
 import com.expensio.ui.auth.LoginScreen
 import com.expensio.ui.auth.SignupScreen
+import com.expensio.ui.groups.AddMemberScreen
+import com.expensio.ui.groups.CreateGroupScreen
+import com.expensio.ui.groups.GroupDetailScreen
 import com.expensio.ui.groups.GroupsScreen
 import com.expensio.ui.home.HomeScreen
 import com.expensio.ui.personal.PersonalScreen
@@ -45,25 +50,35 @@ fun AppNavGraph(
             route = Screen.Auth.route
         ) {
             composable(Screen.Login.route) {
-                LoginScreen(
-                    navController = rootNavController,
-                    authViewModel = authViewModel
-                )
+                LoginScreen(navController = rootNavController, authViewModel = authViewModel)
             }
             composable(Screen.Signup.route) {
-                SignupScreen(
-                    navController = rootNavController,
-                    authViewModel = authViewModel
-                )
+                SignupScreen(navController = rootNavController, authViewModel = authViewModel)
             }
         }
 
         // Main graph with bottom navigation
         composable(Screen.Main.route) {
-            MainScreen(
-                rootNavController = rootNavController,
-                authViewModel = authViewModel
-            )
+            MainScreen(rootNavController = rootNavController, authViewModel = authViewModel)
+        }
+
+        // Group screens (outside bottom nav)
+        composable(Screen.CreateGroup.route) {
+            CreateGroupScreen(navController = rootNavController)
+        }
+        composable(
+            route = Screen.GroupDetail.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            GroupDetailScreen(groupId = groupId, navController = rootNavController)
+        }
+        composable(
+            route = Screen.AddMember.route,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            AddMemberScreen(groupId = groupId, navController = rootNavController)
         }
     }
 }
@@ -114,7 +129,7 @@ fun MainScreen(
                 HomeScreen(authViewModel = authViewModel)
             }
             composable(Screen.Groups.route) {
-                GroupsScreen()
+                GroupsScreen(navController = rootNavController)
             }
             composable(Screen.Personal.route) {
                 PersonalScreen()

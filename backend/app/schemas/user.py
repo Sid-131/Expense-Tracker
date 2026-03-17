@@ -13,3 +13,12 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserSearchResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    email: str | None
+    profile_pic: str | None
+
+    model_config = {"from_attributes": True}

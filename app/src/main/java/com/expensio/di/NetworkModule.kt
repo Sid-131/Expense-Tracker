@@ -60,4 +60,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGroupApi(retrofit: Retrofit): com.expensio.data.remote.api.GroupApi =
+        retrofit.create(com.expensio.data.remote.api.GroupApi::class.java)
 }
