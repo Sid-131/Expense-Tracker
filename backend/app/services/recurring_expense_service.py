@@ -54,6 +54,12 @@ async def create_recurring(
     db.add(r)
     await db.commit()
     await db.refresh(r)
+
+    # If start_date is today or in the past, fire immediately
+    if r.next_due_date <= date.today():
+        await process_due(db)
+        await db.refresh(r)
+
     return await _enrich(db, r)
 
 
