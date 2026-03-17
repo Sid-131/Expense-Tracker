@@ -70,4 +70,9 @@ object NetworkModule {
     @Singleton
     fun provideExpenseApi(retrofit: Retrofit): com.expensio.data.remote.api.ExpenseApi =
         retrofit.create(com.expensio.data.remote.api.ExpenseApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSettlementApi(retrofit: Retrofit): com.expensio.data.remote.api.SettlementApi =
+        retrofit.create(com.expensio.data.remote.api.SettlementApi::class.java)
 }

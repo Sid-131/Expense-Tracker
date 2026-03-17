@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -39,11 +41,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.expensio.ui.expenses.ExpenseViewModel
 import com.expensio.ui.navigation.Screen
+import com.expensio.ui.settlements.SettlementViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +56,7 @@ fun GroupDetailScreen(
     navController: NavController,
     groupViewModel: GroupViewModel = hiltViewModel(),
     expenseViewModel: ExpenseViewModel = hiltViewModel(),
+    settlementViewModel: SettlementViewModel = hiltViewModel(),
 ) {
     val detail by groupViewModel.groupDetail.collectAsState()
     val expenses by expenseViewModel.expenses.collectAsState()
@@ -59,18 +64,34 @@ fun GroupDetailScreen(
     val isLoadingExpenses by expenseViewModel.isLoading.collectAsState()
     val error by groupViewModel.error.collectAsState()
     val actionSuccess by groupViewModel.actionSuccess.collectAsState()
+
+    val balances by expenseViewModel.balances.collectAsState()
+    val suggestions by settlementViewModel.suggestions.collectAsState()
+    val settlements by settlementViewModel.settlements.collectAsState()
+    val isLoadingSettlements by settlementViewModel.isLoading.collectAsState()
+    val settlementError by settlementViewModel.error.collectAsState()
+    val settlementSuccess by settlementViewModel.actionSuccess.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(groupId) {
         groupViewModel.loadGroupDetail(groupId)
         expenseViewModel.loadExpenses(groupId)
+        expenseViewModel.loadBalances(groupId)
+        settlementViewModel.loadSettlements(groupId)
     }
     LaunchedEffect(error) {
         error?.let { snackbarHostState.showSnackbar(it); groupViewModel.clearError() }
     }
     LaunchedEffect(actionSuccess) {
         actionSuccess?.let { snackbarHostState.showSnackbar(it); groupViewModel.clearActionSuccess() }
+    }
+    LaunchedEffect(settlementError) {
+        settlementError?.let { snackbarHostState.showSnackbar(it); settlementViewModel.clearError() }
+    }
+    LaunchedEffect(settlementSuccess) {
+        settlementSuccess?.let { snackbarHostState.showSnackbar(it); settlementViewModel.clearActionSuccess() }
     }
     DisposableEffect(Unit) { onDispose { groupViewModel.clearGroupDetail() } }
 
@@ -103,6 +124,8 @@ fun GroupDetailScreen(
                     text = { Text("Expenses") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 },
                     text = { Text("Members") })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 },
+                    text = { Text("Balances") })
             }
 
             when (selectedTab) {
@@ -193,6 +216,195 @@ fun GroupDetailScreen(
                                         }
                                     }
                                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                2 -> {
+                    if (isLoadingSettlements && balances.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            // Net balances section
+                            item {
+                                Text(
+                                    "Net Balances",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                HorizontalDivider()
+                            }
+                            items(balances) { balance ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(balance.memberName, style = MaterialTheme.typography.bodyLarge)
+                                    val amountColor = when {
+                                        balance.netAmount > 0 -> Color(0xFF2E7D32)
+                                        balance.netAmount < 0 -> Color(0xFFC62828)
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    }
+                                    val amountText = when {
+                                        balance.netAmount > 0 -> "+₹%.2f".format(balance.netAmount)
+                                        balance.netAmount < 0 -> "-₹%.2f".format(-balance.netAmount)
+                                        else -> "₹0.00"
+                                    }
+                                    Text(amountText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = amountColor)
+                                }
+                                HorizontalDivider()
+                            }
+
+                            // Suggestions section
+                            if (suggestions.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        "Suggested Settlements",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(horizontal = 16.dp, top = 20.dp, bottom = 12.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    HorizontalDivider()
+                                }
+                                items(suggestions) { suggestion ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    "${suggestion.fromName} → ${suggestion.toName}",
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                )
+                                                Text(
+                                                    "₹%.2f".format(suggestion.amount),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                            Button(onClick = {
+                                                settlementViewModel.settle(groupId, suggestion)
+                                            }) {
+                                                Text("Settle")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Pending settlements
+                            val pendingSettlements = settlements.filter { it.status == "PENDING" }
+                            if (pendingSettlements.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        "Pending Settlements",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(horizontal = 16.dp, top = 20.dp, bottom = 12.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    HorizontalDivider()
+                                }
+                                items(pendingSettlements) { settlement ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    "${settlement.fromName} → ${settlement.toName}",
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                )
+                                                Text(
+                                                    "₹%.2f".format(settlement.amount),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                            OutlinedButton(onClick = {
+                                                settlementViewModel.completeSettlement(groupId, settlement.id)
+                                            }) {
+                                                Text("Mark Paid")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Completed settlements
+                            val completedSettlements = settlements.filter { it.status == "COMPLETED" }
+                            if (completedSettlements.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        "Completed",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(horizontal = 16.dp, top = 20.dp, bottom = 12.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    HorizontalDivider()
+                                }
+                                items(completedSettlements) { settlement ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Column {
+                                            Text(
+                                                "${settlement.fromName} → ${settlement.toName}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                "₹%.2f".format(settlement.amount),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Text(
+                                            "Paid",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = Color(0xFF2E7D32),
+                                        )
+                                    }
+                                    HorizontalDivider()
+                                }
+                            }
+
+                            if (balances.isEmpty() && suggestions.isEmpty() && settlements.isEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp)) {
+                                        Text(
+                                            "All settled up!",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            modifier = Modifier.align(Alignment.Center),
+                                        )
+                                    }
                                 }
                             }
                         }

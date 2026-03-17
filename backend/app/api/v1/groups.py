@@ -13,7 +13,8 @@ from app.schemas.group import (
     MemberResponse,
 )
 from app.schemas.expense import ExpenseCreate, ExpenseResponse, BalanceResponse
-from app.services import group_service, expense_service
+from app.schemas.settlement import SettlementCreate, SettlementResponse, SettlementSuggestion
+from app.services import group_service, expense_service, settlement_service
 
 router = APIRouter()
 
@@ -92,3 +93,31 @@ async def get_balances(
     db: AsyncSession = Depends(get_db),
 ):
     return await expense_service.get_group_balances(db, current_user.id, group_id)
+
+
+@router.get("/{group_id}/settlements/suggestions", response_model=list[SettlementSuggestion])
+async def get_settlement_suggestions(
+    group_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await settlement_service.get_suggestions(db, current_user.id, group_id)
+
+
+@router.post("/{group_id}/settlements", response_model=SettlementResponse, status_code=201)
+async def create_settlement(
+    group_id: uuid.UUID,
+    data: SettlementCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await settlement_service.create_settlement(db, current_user.id, group_id, data)
+
+
+@router.get("/{group_id}/settlements", response_model=list[SettlementResponse])
+async def list_settlements(
+    group_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await settlement_service.get_group_settlements(db, current_user.id, group_id)
