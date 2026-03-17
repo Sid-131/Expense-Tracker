@@ -1,10 +1,12 @@
 package com.expensio.di
 
+import com.expensio.data.repository.AnalyticsRepositoryImpl
 import com.expensio.data.repository.AuthRepositoryImpl
 import com.expensio.data.repository.ExpenseRepositoryImpl
 import com.expensio.data.repository.GroupRepositoryImpl
 import com.expensio.data.repository.RecurringExpenseRepositoryImpl
 import com.expensio.data.repository.SettlementRepositoryImpl
+import com.expensio.domain.repository.AnalyticsRepository
 import com.expensio.domain.repository.AuthRepository
 import com.expensio.domain.repository.ExpenseRepository
 import com.expensio.domain.repository.GroupRepository
@@ -49,4 +51,10 @@ abstract class RepositoryModule {
     abstract fun bindRecurringExpenseRepository(
         recurringExpenseRepositoryImpl: RecurringExpenseRepositoryImpl
     ): RecurringExpenseRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAnalyticsRepository(
+        analyticsRepositoryImpl: AnalyticsRepositoryImpl
+    ): AnalyticsRepository
 }

@@ -84,4 +84,9 @@ object NetworkModule {
     @Singleton
     fun provideRecurringExpenseApi(retrofit: Retrofit): com.expensio.data.remote.api.RecurringExpenseApi =
         retrofit.create(com.expensio.data.remote.api.RecurringExpenseApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAnalyticsApi(retrofit: Retrofit): com.expensio.data.remote.api.AnalyticsApi =
+        retrofit.create(com.expensio.data.remote.api.AnalyticsApi::class.java)
 }
