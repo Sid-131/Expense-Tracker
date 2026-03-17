@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.expense import Balance
 from app.models.group import GroupMember
+from app.models.user import User
 from app.models.settlement import Settlement
 from app.schemas.settlement import SettlementCreate
 from app.services.expense_service import _require_member, _resolve_name, _update_balance
+from app.services.firebase_service import send_notification
 
 
 async def get_suggestions(db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID) -> list[dict]:
@@ -101,6 +103,20 @@ async def complete_settlement(
     settlement.completed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(settlement)
+
+    # Notify the recipient (to_user) that they received payment
+    if settlement.to_user_id:
+        to_user = (await db.execute(
+            select(User).where(User.id == settlement.to_user_id)
+        )).scalar_one_or_none()
+        if to_user and to_user.fcm_token:
+            from_name = await _resolve_name(db, settlement.from_user_id, settlement.from_guest_id)
+            await send_notification(
+                to_user.fcm_token,
+                title="Payment received",
+                body=f"{from_name} paid you ₹{settlement.amount}",
+                data={"type": "settlement_completed", "settlement_id": str(settlement.id)},
+            )
 
     return await _enrich(db, settlement)
 

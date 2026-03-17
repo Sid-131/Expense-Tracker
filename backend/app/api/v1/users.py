@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,3 +40,17 @@ async def get_user_analytics(
     months_map = {"3m": 3, "6m": 6, "1y": 12, "all": 24}
     months = months_map[range]
     return await get_analytics(db, current_user.id, months)
+
+
+class FcmTokenRequest(BaseModel):
+    token: str
+
+
+@router.post("/fcm-token", status_code=204)
+async def register_fcm_token(
+    body: FcmTokenRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_user.fcm_token = body.token
+    await db.commit()

@@ -7,9 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.expense import Balance, Expense, ExpenseSplit
-from app.models.group import GroupMember, Guest
+from app.models.group import Group, GroupMember, Guest
 from app.models.user import User
 from app.schemas.expense import ExpenseCreate, SplitInput, SplitTypeEnum
+from app.services.firebase_service import send_to_users
 
 
 def _dec(value) -> Decimal:
@@ -42,6 +43,18 @@ async def _get_members(db: AsyncSession, group_id: uuid.UUID) -> list[dict]:
             g = (await db.execute(select(Guest).where(Guest.id == m.guest_id))).scalar_one_or_none()
             if g:
                 members.append({"user_id": None, "guest_id": g.id, "name": g.name})
+    return members
+
+
+async def _get_members_with_tokens(db: AsyncSession, group_id: uuid.UUID) -> list[dict]:
+    result = await db.execute(select(GroupMember).where(GroupMember.group_id == group_id))
+    rows = result.scalars().all()
+    members = []
+    for m in rows:
+        if m.user_id:
+            u = (await db.execute(select(User).where(User.id == m.user_id))).scalar_one_or_none()
+            if u:
+                members.append({"user_id": u.id, "guest_id": None, "fcm_token": u.fcm_token})
     return members
 
 
@@ -176,6 +189,21 @@ async def create_expense(db: AsyncSession, user_id: uuid.UUID,
     await _apply_balances(db, group_id, data.paid_by_user_id, data.paid_by_guest_id, splits)
     await db.commit()
     await db.refresh(expense)
+
+    # Push notification to other group members
+    group = (await db.execute(select(Group).where(Group.id == group_id))).scalar_one_or_none()
+    group_name = group.name if group else "your group"
+    other_tokens = [
+        m["fcm_token"] for m in await _get_members_with_tokens(db, group_id)
+        if m["user_id"] and m["user_id"] != user_id and m["fcm_token"]
+    ]
+    await send_to_users(
+        other_tokens,
+        title=f"New expense in {group_name}",
+        body=f"{paid_by_name} added '{data.title}' · ₹{total}",
+        data={"type": "new_expense", "group_id": str(group_id), "expense_id": str(expense.id)},
+    )
+
     return {**expense.__dict__, "paid_by_name": paid_by_name}
 
 

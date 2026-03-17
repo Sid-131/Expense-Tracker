@@ -5,6 +5,7 @@ import com.expensio.data.local.prefs.TokenManager
 import com.expensio.data.mapper.toDomain
 import com.expensio.data.mapper.toEntity
 import com.expensio.data.remote.api.AuthApi
+import com.expensio.data.remote.api.UserApi
 import com.expensio.data.remote.dto.GoogleAuthRequest
 import com.expensio.data.remote.dto.LoginRequest
 import com.expensio.data.remote.dto.OtpSendRequest
@@ -12,6 +13,8 @@ import com.expensio.data.remote.dto.OtpVerifyRequest
 import com.expensio.data.remote.dto.SignupRequest
 import com.expensio.domain.model.User
 import com.expensio.domain.repository.AuthRepository
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,8 +22,10 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
+    private val userApi: UserApi,
     private val tokenManager: TokenManager,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val firebaseMessaging: FirebaseMessaging,
 ) : AuthRepository {
 
     /** In-memory cache — avoids blocking DB reads for synchronous getCurrentUser() calls. */
@@ -93,11 +98,19 @@ class AuthRepositoryImpl @Inject constructor(
             val user = userDto.toDomain()
             _currentUser = user
             userDao.insertUser(user.toEntity())
+            registerFcmToken()
             Result.success(user)
         } catch (e: Exception) {
             Timber.e(e, "fetchCurrentUser failed")
             Result.failure(e)
         }
+    }
+
+    private suspend fun registerFcmToken() {
+        runCatching {
+            val token = firebaseMessaging.token.await()
+            userApi.registerFcmToken(mapOf("token" to token))
+        }.onFailure { Timber.w(it, "FCM token registration failed") }
     }
 
     override suspend fun signOut() {
