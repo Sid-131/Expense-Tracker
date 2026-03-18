@@ -9,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.expensio.sync.SyncWorker
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -26,7 +27,12 @@ class ExpensioApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false)
+        } else {
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        }
 
         // Schedule background sync every 15 min when online
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
