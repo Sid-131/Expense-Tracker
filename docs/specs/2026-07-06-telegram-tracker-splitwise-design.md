@@ -1,6 +1,7 @@
 # Expensio — Telegram-First Expense Tracker + Splitwise (Design Spec)
 
 **Date:** 2026-07-06
+**Revised:** 2026-07-09 — vision import and web dashboard pulled into first release
 **Status:** Approved design, ready for implementation planning
 **Author:** Siddh (with Claude)
 
@@ -10,22 +11,25 @@
 
 Evolve Expensio from a group-splitting backend into a **Telegram-first** product that
 combines a **personal expense tracker** with the existing **Splitwise-style group
-splitting**, then layers **AI** (text + vision) on top in a later phase.
+splitting**, plus a **web dashboard** for viewing. **Recording** happens on the bot
+(text or receipt screenshot); **viewing** happens on the dashboard.
 
-The Android app is retained but secondary; all clients share one FastAPI backend.
+The Android app is retained but its personal-tracker screens come later; all clients
+share one FastAPI backend.
 
 ## 2. Decisions (locked)
 
 | Area | Decision |
 |---|---|
-| Primary interface | Telegram-first; Android app secondary, same backend |
+| Primary interface | Telegram bot for recording (text + screenshots); web dashboard for viewing; Android app deferred |
 | Product model | **Two separate buckets**: personal tracker vs. existing group engine; unioned only for analytics reads |
 | Bot connection | New thin-client container, **long-polling**, calls existing API with a cached JWT |
 | Entry (text) | Lightweight **rule parser** now; LLM later behind the same interface |
 | Splitting | Real users **and** guest contacts; inline **group name** (`split flat`) with create-if-missing |
-| Images | Vision parser + itemized "exclude X" editing (Phase 2); provider-agnostic, default local ollama |
-| AI | Phase 2, local ollama (:11434), cloud-switchable via config |
-| First release | Text bot with personal + group splitting together |
+| Images | Vision parser + itemized "exclude X" editing — **in first release**; provider-agnostic interface, **cloud (Claude vision API) at launch**, local ollama swap-in later |
+| Web dashboard | New **read-focused** container/app; auth via **Telegram Login Widget**, reuses existing JWT issuance — no separate password |
+| AI (text) | Phase 2, local ollama (:11434), cloud-switchable via config |
+| First release | Bot (text + screenshot recording, personal + group splitting) **and** web dashboard (viewing) |
 
 ## 3. Architecture
 
@@ -46,6 +50,25 @@ authorization, zero-friction onboarding, and an isolated parser module as the AI
 
 Long-polling is chosen because the server sits behind home NAT; no public inbound or
 SSL/webhook is required.
+
+**Web dashboard** — new container `expensio-web` (Next.js, matches the existing stack),
+added to the compose project, served behind the existing `expensio-nginx-1` reverse
+proxy (new path/subdomain, no new public port). Read-focused: history, balances,
+per-category analytics, unified monthly summary. Recording stays on the bot; the
+dashboard does not duplicate the parser or confirm-card flows.
+
+Auth (no new user store):
+1. Dashboard embeds the **Telegram Login Widget**. Telegram handles the login UI and
+   returns a signed payload (id, name, username, auth_date, hash) to the frontend.
+2. Frontend posts that payload to `POST /api/v1/auth/telegram-widget`, a new endpoint
+   that verifies the Telegram hash (HMAC with the bot token) instead of trusting an
+   internal service token, then upserts/looks up the `User` by `telegram_id` — same
+   row the bot's `/auth/telegram` upserts — and returns a JWT.
+3. Frontend stores the JWT (httpOnly cookie) and calls the existing read endpoints
+   (`/expenses`, `/personal-expenses`, `/groups`, `/balances`, analytics) directly.
+
+This means a user who has only ever talked to the bot can log into the dashboard with
+zero setup — same `telegram_id`, same account, no password ever created.
 
 ## 4. Data model
 
@@ -120,7 +143,7 @@ follow-up rather than guess.
 `PARSER=rule|llm` selects it; bot flows unchanged. Can point at a cloud model (e.g.
 Anthropic API) via config for higher accuracy.
 
-## 8. Screenshot / receipt import (Phase 2, vision)
+## 8. Screenshot / receipt import (first release, vision)
 
 - Telegram photo message -> bot downloads image -> **vision parser**
   `parse_image(image) -> ParsedReceipt { merchant, items[{name, price}], total, category }`.
@@ -130,22 +153,26 @@ Anthropic API) via config for higher accuracy.
 - On confirm, store the **final adjusted expense** in the normal bucket (personal or
   split). Items are transient; an optional `receipt_items` JSONB snapshot column can be
   added later if itemized history is wanted (YAGNI for MVP).
-- **Provider-agnostic** behind an interface; default local ollama vision model, config
-  switch to cloud for accuracy.
+- **Provider-agnostic** behind an interface; **default cloud (Claude vision via the
+  Anthropic API) at launch** for accuracy on real-world receipts, config switch to local
+  ollama once quality is proven there.
 - **Money-accuracy mitigations:** always show the itemized total for human confirmation
-  before saving; provider is configurable so accuracy can be dialed up.
+  before saving; provider is configurable so accuracy can be dialed up or costs dialed
+  down later.
 
 ## 9. Phasing
 
-**Phase 1 (first release, text-only, no AI):** bot container; `/start` + `/auth/telegram`
-+ Redis JWT cache; `RuleParser`; `personal_expenses` table/service/endpoints; balances,
-settle, unified monthly summary; Personal/Groups menus.
+**Phase 1 (first release):** bot container (`RuleParser`, text entry); vision receipt
+import via cloud API + itemized editing; `personal_expenses` table/service/endpoints;
+balances, settle, unified monthly summary; Personal/Groups menus; **web dashboard**
+(`expensio-web`, Telegram Login Widget auth, read-only views: history, balances,
+analytics).
 
-**Phase 2 (AI):** `LLMParser` (text) on ollama; vision receipt import + itemized editing;
-NL queries + weekly insights.
+**Phase 2 (AI upgrade + cost):** `LLMParser` (text) on ollama; option to swap vision
+from cloud to local ollama; NL queries + weekly insights.
 
-**Ongoing:** Android app keeps consuming the same API; personal-tracker screens added
-when convenient. No bot dependency.
+**Later:** Android app gains personal-tracker screens on the same API. No bot or
+dashboard dependency.
 
 ## 10. Out of scope (for now)
 
@@ -153,3 +180,6 @@ when convenient. No bot dependency.
 - Persisted itemized receipt history
 - Unequal/percentage splits via bot (backend already supports the data; bot UX later)
 - Public webhook delivery / tunnel for the bot
+- Recording/editing expenses from the web dashboard (dashboard is view-only in first
+  release; all writes go through the bot)
+- Android personal-tracker screens (deferred to Later)
