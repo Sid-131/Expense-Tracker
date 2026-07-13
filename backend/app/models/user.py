@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Boolean, DateTime
+from sqlalchemy import String, Boolean, DateTime, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,6 +19,8 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     profile_pic: Mapped[str | None] = mapped_column(String(500), nullable=True)
     google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    telegram_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
+    telegram_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     fcm_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

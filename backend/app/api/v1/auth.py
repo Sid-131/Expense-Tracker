@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import secrets
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.auth import (
@@ -11,6 +14,7 @@ from app.schemas.auth import (
     OtpVerifyRequest,
     RefreshRequest,
     SignupRequest,
+    TelegramAuthRequest,
     TokenResponse,
 )
 from app.services import auth_service
@@ -45,6 +49,22 @@ async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db
         return await auth_service.login_with_google(db, body.id_token)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
+
+@router.post("/telegram", response_model=TokenResponse)
+async def telegram_auth(
+    body: TelegramAuthRequest,
+    db: AsyncSession = Depends(get_db),
+    x_service_token: str = Header(default=""),
+):
+    """Internal endpoint for the telegram-bot container. Guarded by a shared service token."""
+    if not settings.service_token or not secrets.compare_digest(
+        x_service_token, settings.service_token
+    ):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bad service token")
+    return await auth_service.login_with_telegram(
+        db, body.telegram_id, body.name, body.username
+    )
 
 
 @router.post("/otp/send", status_code=status.HTTP_204_NO_CONTENT)

@@ -104,6 +104,30 @@ async def login_with_google(db: AsyncSession, id_token: str) -> TokenResponse:
     return _make_tokens(str(user.id))
 
 
+async def login_with_telegram(
+    db: AsyncSession, telegram_id: int, name: str, username: str | None
+) -> TokenResponse:
+    """Upsert a user keyed by telegram_id, return JWTs. Same row the web dashboard uses."""
+    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        user = User(
+            id=uuid.uuid4(),
+            name=name or "User",
+            telegram_id=telegram_id,
+            telegram_username=username,
+        )
+        db.add(user)
+    else:
+        # Keep username fresh; it can change on Telegram's side
+        user.telegram_username = username
+
+    await db.commit()
+    await db.refresh(user)
+    return _make_tokens(str(user.id))
+
+
 async def send_otp(redis: Redis, phone: str) -> None:
     otp = "".join(random.choices(string.digits, k=6))
     await redis.setex(f"otp:{phone}", OTP_TTL_SECONDS, otp)

@@ -47,6 +47,12 @@ class OtpVerifyRequest(BaseModel):
     otp: str
 
 
+class TelegramAuthRequest(BaseModel):
+    telegram_id: int
+    name: str
+    username: str | None = None
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

@@ -10,6 +10,7 @@ from alembic import context
 # Import models so they register with Base
 from app.database import Base
 from app.models import user  # noqa
+from app.models import personal_expense  # noqa
 from app.config import settings
 
 config = context.config

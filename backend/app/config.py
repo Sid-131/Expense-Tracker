@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
     debug: bool = False
     google_client_id: str = ""
+    # Shared secret the telegram-bot container sends as X-Service-Token to /auth/telegram
+    service_token: str = ""
+    # Bot token, used to verify Telegram Login Widget HMAC for the web dashboard
+    telegram_bot_token: str = ""
 
     @property
     def async_database_url(self) -> str:
