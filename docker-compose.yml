@@ -40,6 +40,8 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       DEBUG: ${DEBUG:-false}
     depends_on:
       postgres:
