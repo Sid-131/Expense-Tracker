@@ -53,6 +53,22 @@ services:
     volumes:
       - ./backend:/app
 
+  telegram-bot:
+    build:
+      context: ./telegram-bot
+    container_name: expensio-telegram-bot
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      API_BASE: http://backend:8000/api/v1
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - internal
+
   nginx:
     image: nginx:alpine
     restart: unless-stopped
